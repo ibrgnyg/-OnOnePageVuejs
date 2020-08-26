@@ -1,0 +1,257 @@
+﻿
+@{
+	ViewData["Title"] = "Index";
+
+}
+<script src="~/lib/jquery/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="~/lib/toastr.js/toastr.min.js"></script>
+<link href="~/lib/toastr.js/toastr.css" rel="stylesheet" />
+
+<div id="myVue">
+	<div >
+		<button class="btn btn btn-primary" v-on:click="createModal"> Yeni Ekle</button>
+	</div>
+	<br />
+	<div class="text-center" v-if="resultList.length  === 0">
+		<img src="~/img/undraw_empty_xct9 (1).png" height="400" width="400" />
+		<br />
+		<h4>Hiç Ürün Yok</h4>
+		<div>
+			<button class="btn btn btn-primary" v-on:click="createModal">Hemen Ekle</button>
+		</div>
+	</div>
+
+	<div v-else="resultList">
+		<table class="table">
+			<thead>
+				<tr>
+					<th>sıra</th>
+					<th>Ürün Görsel Url</th>
+					<th>Ürün Adı</th>
+					<th>Açıklama</th>
+					<th>Fiyat</th>
+				</tr>
+			</thead>
+			<tr v-for="(resultList,art) in resultList">
+
+				<td>{{art+1}}</td>
+				<td v-if="resultList.urlPhoto">
+					<img v-bind:src="resultList.urlPhoto" height="100" width="100" />
+				</td>
+				<td v-else="resultList.urlPhoto">
+					<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcQqvvCCFRAASaxwrYf-Gm73LgEezxHjqM9IIw&usqp=CAU" height="100" width="100" />
+				</td>
+				<td>{{resultList.name}}</td>
+				<td style="white-space:pre-line">{{resultList.description}}</td>
+				<td>{{resultList.price}} ₺</td>
+
+				<td>
+					<button type="button" class="btn btn-danger" v-on:click="productdelete(resultList,art)">Sil</button>
+					<button class="btn btn-primary" v-on:click="editproduct(resultList,art)"> Düzenle</button>
+
+				</td>
+			</tr>
+
+		</table>
+
+	</div>
+
+
+
+
+
+
+	<partial name="_modal" />
+</div>
+
+
+
+
+<script>
+	var app = new Vue({
+		el: "#myVue",
+		data: {
+			resultList: [],
+			name: "",
+			description: "",
+			price: "",
+			urlphoto: "",
+			editİtem: null,
+			productıd: null,
+			error:[],
+		},
+
+		
+
+		created: function () {
+			this.getList();
+
+		},
+
+		methods: {
+
+
+			clearData: function () {
+				var vm = this;
+				vm.name = "";
+				vm.description = "";
+				vm.price = "";
+				vm.urlphoto = "";
+				vm.editİtem = null;
+				vm.productıd = null;
+			},
+
+			closeModal: function () {
+
+				event.target.reset();
+			},
+
+			editproduct: function (data, art) {
+
+				this.name = data.name;
+				this.description = data.description;
+				this.price = data.price;
+				this.urlphoto = data.urlphoto;
+				editİtem = art;
+				productıd = data.id;
+
+				$("#editModalShow").modal("show");
+
+			},
+
+			updatesave: function () {
+				var vm = this;
+
+				var updateproduct = {
+					id: productıd,
+					name: vm.name,
+					description: vm.description,
+					price: vm.price,
+					urlphoto: vm.urlphoto,
+				}
+				$.ajax({
+					url: "/product/update",
+					data: updateproduct,
+					method: "PUT",
+				})
+					.done(function () {
+						vm.resultList[editİtem].name = vm.name;
+						vm.resultList[editİtem].description = vm.description;
+						vm.resultList[editİtem].price = vm.price;
+						vm.resultList[editİtem].urlphoto = vm.urlphoto;
+						toastr.success("Ürün Güncellendi");
+					})
+					.fail(function () {
+						toastr.error("Ürün Güncellenemedi!!");
+					})
+					.always(function () {
+						vm.clearData();
+					});
+
+
+				$("#editModalShow").modal("hide");
+
+			},
+
+
+
+			productdelete: function (data) {
+				var vm = this;
+				var remove = {
+					id: data.id,
+				}
+				$.ajax({ url: "/product/DeleteProduct", data: remove, method: "DELETE" })
+					.done(function (data) {
+						vm.resultList.splice(data, 1);
+						toastr.success("Ürün Silindi");
+					})
+					.fail(function () {
+						toastr.error("Ürün Silinemedi!");
+					});
+			},
+
+			addProduct: function () {
+
+				var vm = this;
+
+				var newproduct = {
+					name: vm.name,
+					description: vm.description,
+					price: vm.price,
+					file: vm.file,
+					urlphoto: vm.urlphoto,
+				}
+
+				if (!this.name) {
+					this.error.push('ürün adı zorunludur!');
+				}
+				if (!this.description) {
+					this.error.push('ürün açıklamsı zorunludur');
+				}
+				if (!this.price)
+				{
+					this.error.push("ürün fiyatı zorunludur")
+				}
+
+				else {
+					$.ajax({
+						url: "/product/create",
+						data: newproduct,
+						method: "POST",
+					})
+						.done(function (data) {
+							vm.resultList.splice(0, 0, newproduct);
+							toastr.success("Yeni Ürün Eklendi");
+						})
+						.fail(function () {
+							toastr.error("Ürün Eklenemedi!");
+						})
+						.always(function () {
+							vm.clearData();
+						});
+
+					$("#createModalShow").modal("hide");
+				}
+
+				
+
+
+			},
+
+
+
+
+
+			getList: function () {
+				var vm = this;
+				$.ajax({ url: "/product/getall", method: "GET" })
+
+					.done(function (data) {
+						vm.resultList = data;
+						toastr.success("Tüm Ürünler Yüklendi.");
+					})
+					.fail(function () {
+						toastr.error("Tüm Ürünler Yüklenemedi!");
+					});
+			},
+
+			createModal: function () {
+
+				$("#createModalShow").modal("show");
+			},
+
+
+
+
+
+		},
+		
+
+
+
+	});
+
+
+</script>
+
